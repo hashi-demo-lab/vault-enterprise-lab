@@ -13,12 +13,10 @@ logger "Running"
 ## Variables
 
 # Get Private IP address
-#HOSTNAME=$(curl http://169.254.169.254/latest/meta-data/hostname)
 PRIVATE_IP=$(curl http://169.254.169.254/latest/meta-data/local-ipv4)
 PUBLIC_IP=$(curl http://169.254.169.254/latest/meta-data/public-ipv4)
 
 VAULT_ZIP="${tpl_vault_zip_file}"
-
 
 # Detect package management system.
 YUM=$(which yum 2>/dev/null)
@@ -69,6 +67,7 @@ user_ubuntu() {
 
 logger "Setting timezone to UTC"
 sudo timedatectl set-timezone UTC
+sudo systemctl disable ufw
 
 if [[ ! -z $${YUM} ]]; then
   logger "RHEL/CentOS system detected"
@@ -151,8 +150,40 @@ logger "/usr/local/bin/vault --version: $(/usr/local/bin/vault --version)"
 
 logger "Configuring Vault"
 
+sudo mkdir -pm 0755 ${tpl_vault_storage_path}
+sudo chown -R vault:vault ${tpl_vault_storage_path}
+sudo chmod -R a+rwx ${tpl_vault_storage_path}
+
+echo "${tpl_vault_lic}" >> /etc/vault.d/license.hclic
+
+sudo tee /etc/vault.d/vault.hcl <<EOF
+storage "raft" {
+  path    = "/vault/vault_1"
+  node_id = "vault_1"
+}
+
+listener "tcp" {
+  address     = "0.0.0.0:8200"
+  cluster_address     = "0.0.0.0:8201"
+  tls_disable = true
+}
+
+api_addr = "http://$${PUBLIC_IP}:8200"
+cluster_addr = "http://$${PRIVATE_IP}:8201"
+disable_mlock = true
+ui=true
+license_path = "/etc/vault.d/license.hclic"
+EOF
+
 sudo chown -R vault:vault /etc/vault.d /etc/ssl/vault
 sudo chmod -R 0644 /etc/vault.d/*
+
+sudo tee -a /etc/environment <<EOF
+export VAULT_ADDR=http://127.0.0.1:8200
+export VAULT_SKIP_VERIFY=true
+EOF
+
+source /etc/environment
 
 logger "Granting mlock syscall to vault binary"
 sudo setcap cap_ipc_lock=+ep /usr/local/bin/vault
@@ -160,28 +191,70 @@ sudo setcap cap_ipc_lock=+ep /usr/local/bin/vault
 ##--------------------------------------------------------------------
 ## Install Vault Systemd Service
 
-sudo tee /etc/systemd/system/vault.service > /dev/null <<EOF
+read -d '' VAULT_SERVICE <<EOF
 [Unit]
 Description=Vault
 Requires=network-online.target
 After=network-online.target
 
 [Service]
-Environment=GOMAXPROCS=8
-Environment=VAULT_DEV_ROOT_TOKEN_ID=root
 Restart=on-failure
-ExecStart=/usr/local/bin/vault server -dev -dev-listen-address=0.0.0.0:8200
-ExecReload=/bin/kill -HUP $MAINPID
-KillSignal=SIGINT
+PermissionsStartOnly=true
+ExecStartPre=/sbin/setcap 'cap_ipc_lock=+ep' /usr/local/bin/vault
+ExecStart=/usr/local/bin/vault server -config /etc/vault.d
+ExecReload=/bin/kill -HUP \$MAINPID
+KillSignal=SIGTERM
+User=vault
+Group=vault
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-sudo chmod 0664 /etc/systemd/system/vault.service
+##--------------------------------------------------------------------
+## Install Vault Systemd Service that allows additional params/args
+
+sudo tee /etc/systemd/system/vault@.service > /dev/null <<EOF
+[Unit]
+Description=Vault
+Requires=network-online.target
+After=network-online.target
+
+[Service]
+Environment="OPTIONS=%i"
+Restart=on-failure
+PermissionsStartOnly=true
+ExecStartPre=/sbin/setcap 'cap_ipc_lock=+ep' /usr/local/bin/vault
+ExecStart=/usr/local/bin/vault server -config /etc/vault.d \$OPTIONS
+ExecReload=/bin/kill -HUP \$MAINPID
+KillSignal=SIGTERM
+User=vault
+Group=vault
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+if [[ ! -z $${YUM} ]]; then
+  SYSTEMD_DIR="/etc/systemd/system"
+  logger "Installing systemd services for RHEL/CentOS"
+  echo "$${VAULT_SERVICE}" | sudo tee $${SYSTEMD_DIR}/vault.service
+  sudo chmod 0664 $${SYSTEMD_DIR}/vault*
+elif [[ ! -z $${APT_GET} ]]; then
+  SYSTEMD_DIR="/lib/systemd/system"
+  logger "Installing systemd services for Debian/Ubuntu"
+  echo "$${VAULT_SERVICE}" | sudo tee $${SYSTEMD_DIR}/vault.service
+  sudo chmod 0664 $${SYSTEMD_DIR}/vault*
+else
+  logger "Service not installed due to OS detection failure"
+  exit 1;
+fi
 
 sudo systemctl enable vault
 sudo systemctl start vault
+
+#=================================
+
 sleep 2
 
 sudo tee /etc/profile.d/vault.sh > /dev/null <<"EOF"
@@ -191,6 +264,19 @@ export VAULT_ADDR="http://127.0.0.1:8200"
 export VAULT_SKIP_VERIFY=true
 EOF
 source /etc/profile.d/vault.sh
+
+
+# Initialise Vault
+logger "Initialise Vault"
+echo "\n\033[32m---Configuring Vault for ---\033[0m"
+init_output=$(vault operator init -key-shares=1 -key-threshold=1 -format=json)
+echo $init_output
+# Store the root token and unseal keys in variables
+export root_token=$(echo "$${init_output}" | jq -r ".root_token")
+export unseal_key=$(echo "$${init_output}" | jq -r ".unseal_keys_b64[]")
+
+# Unseal leader
+vault operator unseal $(eval echo $${unseal_key})
 
 
 export VAULT_ADDR="http://127.0.0.1:8200"

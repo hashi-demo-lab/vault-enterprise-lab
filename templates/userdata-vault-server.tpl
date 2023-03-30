@@ -6,7 +6,8 @@ logger() {
   DT=$(date '+%Y/%m/%d %H:%M:%S')
   echo "$DT $0: $1"
 }
-
+logger "sleep 30s"
+sleep 30
 logger "Running"
 
 ##--------------------------------------------------------------------
@@ -67,6 +68,7 @@ user_ubuntu() {
 
 logger "Setting timezone to UTC"
 sudo timedatectl set-timezone UTC
+sudo systemctl disable ufw
 
 if [[ ! -z $${YUM} ]]; then
   logger "RHEL/CentOS system detected"
@@ -153,6 +155,8 @@ sudo mkdir -pm 0755 ${tpl_vault_storage_path}
 sudo chown -R vault:vault ${tpl_vault_storage_path}
 sudo chmod -R a+rwx ${tpl_vault_storage_path}
 
+echo "${tpl_vault_lic}" >> /etc/vault.d/license.hclic
+
 sudo tee /etc/vault.d/vault.hcl <<EOF
 storage "raft" {
   path    = "${tpl_vault_storage_path}"
@@ -179,6 +183,7 @@ api_addr = "http://$${PUBLIC_IP}:8200"
 cluster_addr = "http://$${PRIVATE_IP}:8201"
 disable_mlock = true
 ui=true
+license_path = "/etc/vault.d/license.hclic"
 EOF
 
 sudo chown -R vault:vault /etc/vault.d /etc/ssl/vault
