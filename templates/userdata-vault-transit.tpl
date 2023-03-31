@@ -272,7 +272,7 @@ echo "\n\033[32m---Configuring Vault for ---\033[0m"
 init_output=$(vault operator init -key-shares=1 -key-threshold=1 -format=json)
 echo $init_output
 # Store the root token and unseal keys in variables
-export root_token=$(echo "$${init_output}" | jq -r ".root_token")
+export VAULT_TOKEN=$(echo "$${init_output}" | jq -r ".root_token")
 export unseal_key=$(echo "$${init_output}" | jq -r ".unseal_keys_b64[]")
 
 # Unseal leader
@@ -280,7 +280,7 @@ vault operator unseal $(eval echo $${unseal_key})
 
 
 export VAULT_ADDR="http://127.0.0.1:8200"
-vault login root
+vault login $VAULT_TOKEN
 vault secrets enable transit
 vault write -f transit/keys/unseal_key
 
