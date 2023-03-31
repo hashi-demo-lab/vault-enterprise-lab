@@ -280,7 +280,8 @@ vault operator unseal $(eval echo $${unseal_key})
 
 
 export VAULT_ADDR="http://127.0.0.1:8200"
-vault login $VAULT_TOKEN
+echo $VAULT_TOKEN | vault login -
+#vault login $VAULT_TOKEN
 vault secrets enable transit
 vault write -f transit/keys/unseal_key
 
