@@ -140,8 +140,8 @@ fi
 logger "Downloading pkcs11"
 sudo apt install opensc -y
 sudo curl -o /tmp/vault-pkcs11-provider_0.2.0_linux-el8_amd64.zip https://releases.hashicorp.com/vault-pkcs11-provider/0.2.0/vault-pkcs11-provider_0.2.0_linux-el8_amd64.zip
-sudo unzip /tmp/vault-pkcs11-provider_0.2.0_linux-el8_amd64.zip
-sudo mv libvault-pkcs11.so /etc/vault.d/libvault-pkcs11.so
+sleep 5
+sudo unzip -o /tmp/vault-pkcs11-provider_0.2.0_linux-el8_amd64.zip -d /usr/local/bin/
 sudo chown vault:vault /etc/vault.d/libvault-pkcs11.so
 
 logger "Downloading Vault"
