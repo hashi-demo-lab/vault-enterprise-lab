@@ -198,6 +198,7 @@ sudo tee -a /etc/environment <<EOF
 export VAULT_ADDR=http://127.0.0.1:8200
 cat
 EOF
+source /etc/environment
 
 sudo tee /etc/vault-pkcs11.hcl <<EOF
 slot {
@@ -206,10 +207,9 @@ slot {
     ca_path = "/etc/vault.d/ca.pem"
     scope = "my-service"
 }
+EOF
 
 sleep 300
-
-source /etc/environment
 
 logger "Granting mlock syscall to vault binary"
 sudo setcap cap_ipc_lock=+ep /usr/local/bin/vault
