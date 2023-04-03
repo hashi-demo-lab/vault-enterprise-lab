@@ -137,6 +137,10 @@ fi
 ##--------------------------------------------------------------------
 ## Install Vault
 
+logger "Downloading pkcs11"
+sudo apt install opensc -y
+curl -o /tmp/vault-pkcs11-provider_0.2.0_linux-el8_amd64.zip https://releases.hashicorp.com/vault-pkcs11-provider/0.2.0/vault-pkcs11-provider_0.2.0_linux-el8_amd64.zip
+
 logger "Downloading Vault"
 curl -o /tmp/vault.zip $${VAULT_ZIP}
 

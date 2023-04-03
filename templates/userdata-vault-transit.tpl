@@ -136,6 +136,12 @@ fi
 ##--------------------------------------------------------------------
 ## Install Vault
 
+logger "Downloading pkcs11"
+cd /tmp
+sudo apt install opensc -y
+curl -o /tmp/vault-pkcs11-provider_0.2.0_linux-el8_amd64.zip https://releases.hashicorp.com/vault-pkcs11-provider/0.2.0/vault-pkcs11-provider_0.2.0_linux-el8_amd64.zip
+/tmp/vault-pkcs11-provider_0.2.0_linux-el8_amd64.zip
+
 logger "Downloading Vault"
 curl -o /tmp/vault.zip $${VAULT_ZIP}
 
@@ -274,12 +280,14 @@ echo $init_output
 # Store the root token and unseal keys in variables
 export VAULT_TOKEN=$(echo "$${init_output}" | jq -r ".root_token")
 export unseal_key=$(echo "$${init_output}" | jq -r ".unseal_keys_b64[]")
+export VAULT_ADDR="http://127.0.0.1:8200"
+export VAULT_SKIP_VERIFY=true
 
 # Unseal leader
 vault operator unseal $(eval echo $${unseal_key})
 
+echo $unseal_key >> /tmp/unseal_key.txt
 
-export VAULT_ADDR==
 echo $VAULT_TOKEN | vault login -
 #vault login $VAULT_TOKEN
 vault secrets enable transit
@@ -293,6 +301,30 @@ path "transit/encrypt/unseal_key" {
 path "transit/decrypt/unseal_key" {
    capabilities = [ "update" ]
 }
+
+path "kmip/*" {
+  capabilities = [ "create", "read", "update", "delete", "list" ]
+}
+EOF
+
+
+
+cd /etc/vault.d/
+vault secrets enable kmip
+vault write kmip/config listen_addrs=0.0.0.0:5696
+vault write -f kmip/scope/my-service
+vault write kmip/scope/my-service/role/admin operation_all=true
+vault write -f -format=json kmip/scope/my-service/role/admin/credential/generate | tee /etc/vault.d/kmip.json
+jq --raw-output --exit-status '.data.ca_chain[]' /etc/vault.d/kmip.json > /etc/vault.d/ca.pem
+jq --raw-output --exit-status '.data.certificate' /etc/vault.d/kmip.json > /etc/vault.d/cert.pem
+
+sudo tee /etc/vault-pkcs11.hcl <<EOF
+slot {
+    server = "127.0.0.1:5696"
+    tls_cert_path = "/etc/vault.d/cert.pem"
+    ca_path = "/etc/vault.d/ca.pem"
+    scope = "my-service"
+}
 EOF
 
 logger "autounseal policy"
@@ -303,3 +335,7 @@ logger "create wrap token"
 vault token create -orphan -policy="autounseal" -wrap-ttl=20m -period=24h
 
 logger "Complete"
+
+
+
+
