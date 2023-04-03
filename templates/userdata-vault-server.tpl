@@ -6,8 +6,8 @@ logger() {
   DT=$(date '+%Y/%m/%d %H:%M:%S')
   echo "$DT $0: $1"
 }
-logger "sleep 30s"
-sleep 30
+logger "sleep 10s"
+sleep 10
 logger "Running"
 
 ##--------------------------------------------------------------------
@@ -191,8 +191,10 @@ sudo chmod -R 0644 /etc/vault.d/*
 
 sudo tee -a /etc/environment <<EOF
 export VAULT_ADDR=http://127.0.0.1:8200
-export VAULT_SKIP_VERIFY=true
+cat
 EOF
+
+sleep 300
 
 source /etc/environment
 

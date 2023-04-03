@@ -279,10 +279,27 @@ export unseal_key=$(echo "$${init_output}" | jq -r ".unseal_keys_b64[]")
 vault operator unseal $(eval echo $${unseal_key})
 
 
-export VAULT_ADDR="http://127.0.0.1:8200"
+export VAULT_ADDR==
 echo $VAULT_TOKEN | vault login -
 #vault login $VAULT_TOKEN
 vault secrets enable transit
 vault write -f transit/keys/unseal_key
+
+sudo tee /etc/vault.d/autounseal.hcl <<EOF
+path "transit/encrypt/unseal_key" {
+   capabilities = [ "update" ]
+}
+
+path "transit/decrypt/unseal_key" {
+   capabilities = [ "update" ]
+}
+EOF
+
+logger "autounseal policy"
+vault policy write autounseal /etc/vault.d/autounseal.hcl
+
+logger "create wrap token"
+
+vault token create -orphan -policy="autounseal" -wrap-ttl=20m -period=24h
 
 logger "Complete"
