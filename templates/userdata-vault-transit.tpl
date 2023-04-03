@@ -145,6 +145,8 @@ unzip /tmp/vault-pkcs11-provider_0.2.0_linux-el8_amd64.zip
 logger "Downloading Vault"
 curl -o /tmp/vault.zip $${VAULT_ZIP}
 
+sleep 10
+
 logger "Installing Vault"
 sudo unzip -o /tmp/vault.zip -d /usr/local/bin/
 sudo chmod 0755 /usr/local/bin/vault
