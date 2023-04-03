@@ -140,6 +140,9 @@ fi
 logger "Downloading pkcs11"
 sudo apt install opensc -y
 curl -o /tmp/vault-pkcs11-provider_0.2.0_linux-el8_amd64.zip https://releases.hashicorp.com/vault-pkcs11-provider/0.2.0/vault-pkcs11-provider_0.2.0_linux-el8_amd64.zip
+unzip /tmp/vault-pkcs11-provider_0.2.0_linux-el8_amd64.zip
+sudo mv libvault-pkcs11.so /etc/vault.d/
+sudo chown vault:vault /etc/vault.d/libvault-pkcs11.so
 
 logger "Downloading Vault"
 curl -o /tmp/vault.zip $${VAULT_ZIP}
@@ -173,7 +176,7 @@ listener "tcp" {
   tls_disable = true
 }
 
-seal "transit" {
+ seal "" {
   address            = "http://${tpl_vault_transit_addr}:8200"
   token              = "root"
   disable_renewal    = "false"
@@ -181,7 +184,7 @@ seal "transit" {
   // Key configuration
   key_name           = "unseal_key"
   mount_path         = "transit/"
-}
+} 
 
 api_addr = "http://$${PUBLIC_IP}:8200"
 cluster_addr = "http://$${PRIVATE_IP}:8201"
@@ -197,6 +200,14 @@ sudo tee -a /etc/environment <<EOF
 export VAULT_ADDR=http://127.0.0.1:8200
 cat
 EOF
+
+sudo tee /etc/vault-pkcs11.hcl <<EOF
+slot {
+    server = "127.0.0.1:5696"
+    tls_cert_path = "/etc/vault.d/cert.pem"
+    ca_path = "/etc/vault.d/ca.pem"
+    scope = "my-service"
+}
 
 sleep 300
 
@@ -282,7 +293,7 @@ echo "${address} ${name}" | sudo tee -a /etc/hosts
 #   the same data.
 sleep 5
 logger "Initializing Vault and storing results for ubuntu user"
-vault operator init -recovery-shares 1 -recovery-threshold 1 -format=json > /tmp/key.json
+::
 sudo chown ubuntu:ubuntu /tmp/key.json
 
 logger "Saving root_token and recovery key to ubuntu user's home"
