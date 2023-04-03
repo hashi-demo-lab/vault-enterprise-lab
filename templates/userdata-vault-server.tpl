@@ -202,7 +202,7 @@ source /etc/environment
 
 sudo tee /etc/vault-pkcs11.hcl <<EOF
 slot {
-    server = "127.0.0.1:5696"
+    server = "10.0.101.21:5696"
     tls_cert_path = "/etc/vault.d/cert.pem"
     ca_path = "/etc/vault.d/ca.pem"
     scope = "my-service"
