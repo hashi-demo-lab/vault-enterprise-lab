@@ -179,6 +179,7 @@ listener "tcp" {
 seal "pkcs11" {
   lib = "/etc/vault.d/libvault-pkcs11.so"
   slot = "0"
+  pin =  "0"
   key_label = "hsm_secret_key"
   hmac_key_label = "hsm_hmac_key"
   generate_key = "true"
