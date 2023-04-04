@@ -38,7 +38,7 @@ variable "vault_transit_private_ip_dr" {
 variable "vault_server_names_dr" {
   description = "Names of the Vault nodes that will join the cluster"
   type        = list(string)
-  default     = ["vault_5", "vault_6", "vault_7"]
+  default     = ["vault_5_", "vault_6", "vault_7"]
 }
 
 variable "vault_server_private_ips_dr" {

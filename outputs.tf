@@ -10,6 +10,11 @@ output "endpoints" {
     - Initialized and unsealed.
     - The root token creates a transit key that enables the other Vaults to auto-unseal.
     - Does not join the High-Availability (HA) cluster.
+  
+  vault_1_dr (${aws_instance.vault-transit-dr.public_ip}) | internal: (${aws_instance.vault-transit-dr.private_ip})
+    - Initialized and unsealed.
+    - The root token creates a transit key that enables the other Vaults to auto-unseal.
+    - Does not join the High-Availability (HA) cluster.
 
   vault_2 (${aws_instance.vault-server[0].public_ip}) | internal: (${aws_instance.vault-server[0].private_ip})
     - Initialized and unsealed.

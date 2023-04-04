@@ -170,6 +170,7 @@ storage "raft" {
   node_id = "vault_1"
 }
 
+
 listener "tcp" {
   address     = "0.0.0.0:8200"
   cluster_address     = "0.0.0.0:8201"
@@ -266,8 +267,6 @@ sudo systemctl start vault
 sleep 2
 
 sudo tee /etc/profile.d/vault.sh > /dev/null <<"EOF"
-alias v="vault"
-alias vault="vault"
 export VAULT_ADDR="http://127.0.0.1:8200"
 export VAULT_SKIP_VERIFY=true
 EOF

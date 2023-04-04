@@ -125,7 +125,6 @@ resource "aws_instance" "vault-transit-dr" {
   lifecycle {
     ignore_changes = [
       ami,
-      tags,
     ]
   }
 }
