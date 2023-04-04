@@ -313,7 +313,7 @@ EOF
 
 cd /etc/vault.d/
 vault secrets enable kmip
-vault write kmip/config listen_addrs=0.0.0.0:5696 server_ips=10.0.101.21,127.0.0.1
+vault write kmip/config listen_addrs=0.0.0.0:5696 server_ips=10.0.101.21,10.0.101.31,127.0.0.1
 vault write -f kmip/scope/my-service
 vault write kmip/scope/my-service/role/admin operation_all=true
 vault write -f -format=json kmip/scope/my-service/role/admin/credential/generate | tee /etc/vault.d/kmip.json
